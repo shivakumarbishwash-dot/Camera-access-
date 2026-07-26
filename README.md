@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Camera + Audio + Recorder Demo</title>
+<style>
+  body {font-family:Arial, sans-serif; background:#2c2c2c; color:#fff; padding:20px;}
+  video {width:100%; max-width:640px; background:#000; border-radius:8px;}
+  button {margin:10px 5px; padding:10px 20px; font-size:1em; border:none; border-radius:4px; cursor:pointer;}
+  #status {margin-top:10px; font-weight:bold;}
+  #recordBtn.recording {background:#e74c3c; color:#fff;}
+  #recordBtn {background:#27ae60; color:#fff;}
+</style>
+</head>
+<body>
+
+<h2>Camera + Audio + Recording Demo</h2>
+
+<video id="preview" autoplay playsinline muted></video>
+<br>
+<button id="startBtn">Start Camera & Audio</button>
+<button id="recordBtn" disabled>Start Recording</button>
+<div id="status"></div>
+
+<script>
+  const startBtn = document.getElementById('startBtn');
+  const recordBtn = document.getElementById('recordBtn');
+  const preview = document.getElementById('preview');
+  const status = document.getElementById('status');
+
+  let stream;
+  let mediaRecorder;
+  let recordedChunks = [];
+
+  // 1️⃣ Start camera + microphone
+  startBtn.onclick = async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      preview.srcObject = stream;
+      status.textContent = 'Camera & Microphone started.';
+      recordBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      status.textContent = '❌ Unable to access camera/microphone.';
+    }
+  };
+
+  // 2️⃣ Record button
+  recordBtn.onclick = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      recordBtn.textContent = 'Start Recording';
+      recordBtn.classList.remove('recording');
+    } else {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'recorded_video.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+        status.textContent = '✅ Recording finished and downloaded.';
+      };
+
+      mediaRecorder.start();
+      recordBtn.textContent = 'Stop Recording';
+      recordBtn.classList.add('recording');
+      status.textContent = '🔴 Recording...';
+    }
+  };
+</script>
+
+</body>
+</html>
